@@ -19,13 +19,15 @@ type setting struct {
 var (
 	devRant     *goRant.Client
 	cui         *gocui.Gui
-	views       = []string{"input", "main", "sort", "limit"}
+	views       = []string{"input", "sort", "limit"}
 	active      = 0
 	printLimit  = 5
 	lastLim     = 0
 	rantSetting setting
 	rants       []goRant.Rant
 	rantOpen    = false
+	current     string
+	listEnd     = false
 )
 
 func layout(g *gocui.Gui) error {
@@ -95,13 +97,13 @@ func layout(g *gocui.Gui) error {
 		logo.Editable = false
 		logo.Frame = false
 
-		art := `          ########  ######## ##     ## ########     ###    ##    ## ######## 
-          ##     ## ##       ##     ## ##     ##   ## ##   ###   ##    ##    
-          ##     ## ##       ##     ## ##     ##  ##   ##  ####  ##    ##    
-          ##     ## ######   ##     ## ########  ##     ## ## ## ##    ##    
-          ##     ## ##        ##   ##  ##   ##   ######### ##  ####    ##    
-          ##     ## ##         ## ##   ##    ##  ##     ## ##   ###    ##    
-          ########  ########    ###    ##     ## ##     ## ##    ##    ##   `
+		art := ` ########  ######## ##     ## ########     ###    ##    ## ######## 
+ ##     ## ##       ##     ## ##     ##   ## ##   ###   ##    ##    
+ ##     ## ##       ##     ## ##     ##  ##   ##  ####  ##    ##    
+ ##     ## ######   ##     ## ########  ##     ## ## ## ##    ##    
+ ##     ## ##        ##   ##  ##   ##   ######### ##  ####    ##    
+ ##     ## ##         ## ##   ##    ##  ##     ## ##   ###    ##    
+ ########  ########    ###    ##     ## ##     ## ##    ##    ##   `
 		fmt.Fprintf(logo, "%s", art)
 	}
 	return nil
@@ -156,6 +158,15 @@ func initKeyBinding(g *gocui.Gui) error {
 	if err := cui.SetKeybinding("input", gocui.KeyBackspace, gocui.ModNone, backSp); err != nil {
 		return err
 	}
+	if err := cui.SetKeybinding("input", gocui.KeyArrowLeft, gocui.ModNone, leftKey); err != nil {
+		return err
+	}
+	if err := cui.SetKeybinding("input", gocui.KeyArrowRight, gocui.ModNone, rightKey); err != nil {
+		return err
+	}
+	if err := cui.SetKeybinding("input", gocui.KeyArrowDown, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error { return nil }); err != nil {
+		return err
+	}
 
 	if err := cui.SetKeybinding("sort", gocui.KeyEnter, gocui.ModNone, setSort); err != nil {
 		return err
@@ -198,7 +209,9 @@ func nextTab(g *gocui.Gui, v *gocui.View) error {
 
 //func to handle Inputs
 func enterCom(g *gocui.Gui, v *gocui.View) error {
+	x, _ := v.Size()
 	_, lineY := v.Cursor()
+	v.SetCursor(x, lineY)
 	command, err := v.Line(lineY)
 	if err != nil {
 		return err
@@ -228,6 +241,23 @@ func upKey(g *gocui.Gui, v *gocui.View) error {
 	com := cleanComm(preCom)
 	fmt.Fprintf(v, "%s", com)
 	v.SetCursor(5+len(com), lineY)
+	return nil
+}
+
+func leftKey(g *gocui.Gui, v *gocui.View) error {
+	x, y := v.Cursor()
+	if x > 5 {
+		v.SetCursor(x-1, y)
+	}
+	return nil
+}
+
+func rightKey(g *gocui.Gui, v *gocui.View) error {
+	x, y := v.Cursor()
+	str, _ := v.Line(y)
+	if x > len(cleanComm(str)) {
+		v.SetCursor(x+1, y)
+	}
 	return nil
 }
 
@@ -301,6 +331,7 @@ func printRant(r goRant.Rant, coms []goRant.Comment) {
 //func rants command calls
 func fetchRants() {
 	output(true, "Fetching rants....")
+	lastLim = 0
 	view := getMain()
 	view.Clear()
 	ch := make(chan bool)
@@ -313,6 +344,7 @@ func fetchRants() {
 	rs := <-rCh
 	if got := <-ch; got {
 		rants = rs
+		current = "rants"
 		printRants(rs, 0)
 		output(false, "Done!!")
 	}
@@ -324,10 +356,15 @@ func printRants(rs []goRant.Rant, start int) {
 	view.Clear()
 	l := len(rs)
 	lim := printLimit
-	if start+printLimit >= l {
-		lim = l - start
+	if start >= l {
+		lim = l - (start - printLimit)
 	}
 	for i := start; i < start+lim; i++ {
+		if i >= l {
+			output(false, "End of List")
+			listEnd = true
+			break
+		}
 		var rant string
 		r := rs[i]
 		if r.AttachedImage.URL != "" {
@@ -360,31 +397,39 @@ func printProfile(user goRant.User) {
 
 //func to print search result
 func printRes(term string) {
+	lastLim = 0
 	rs, err := devRant.Search(term)
 	if err != nil {
 		output(false, err.Error())
 	}
 	rants = rs
+	current = "search"
 	printRants(rs, 0)
 }
 
 func fetchStories() {
+	lastLim = 0
+	listEnd = false
 	ss, err := devRant.Stories()
 	if err != nil {
 		output(false, err.Error())
 		return
 	}
 	rants = ss
+	current = "stories"
 	printRants(ss, 0)
 }
 
 func fetchWeeklyRants() {
+	lastLim = 0
+	listEnd = false
 	wrs, err := devRant.WeeklyRant()
 	if err != nil {
 		output(false, err.Error())
 		return
 	}
 	rants = wrs
+	current = "weekly"
 	printRants(wrs, 0)
 }
 
@@ -397,6 +442,19 @@ func fetchSurprise() {
 	printRant(r, coms)
 }
 
+func fetchCollabs() {
+	lastLim = 0
+	listEnd = false
+	rs, err := devRant.Collabs()
+	if err != nil {
+		output(false, err.Error())
+		return
+	}
+	rants = rs
+	current = "collabs"
+	printRants(rs, 0)
+}
+
 //duh! func to print help
 func printHelp() {
 	v := getMain()
@@ -405,7 +463,7 @@ func printHelp() {
 	help := `Command: Output
 help: help info
 rants: Gets all rants
-:n or next: print next rants (at once 20 rants are fetched) 
+next or :n : print next rants (at once 20 rants are fetched) 
 rant <number>: View the single rant
 cd.. or back : to go back to rants view
 profile <username>: Prints user info of given username
@@ -519,16 +577,39 @@ func checkCommand(com string) {
 		return
 	}
 
+	if strings.Compare(cleanInp, "collab") == 0 || strings.Compare(cleanInp, "collabs") == 0 {
+		fetchCollabs()
+		return
+	}
+
 	//Next Command
 	if strings.Compare(cleanInp, ":n") == 0 || strings.Compare(cleanInp, "next") == 0 {
-		output(false, ":n called")
 		lastLim += printLimit
-		if lastLim < rantSetting.limit {
-			printRants(rants, lastLim)
-		} else {
-			lastLim = 0
-			rants = getRants(rantSetting.sort, rantSetting.limit+20, rantSetting.skip+rantSetting.limit)
-			printRants(rants, lastLim)
+		switch current {
+		case "rants":
+			{
+				if lastLim < rantSetting.limit {
+					printRants(rants, lastLim)
+				} else {
+
+					lastLim = 0
+					rantSetting.skip += rantSetting.limit
+					rants = getRants(rantSetting.sort, rantSetting.limit+20, rantSetting.skip)
+					printRants(rants, lastLim)
+				}
+				break
+			}
+		case "weekly":
+		case "search":
+		case "stories":
+		case "collabs":
+			{
+				if !listEnd {
+					printRants(rants, lastLim)
+				} else {
+					output(false, "End of list\nFetch something else")
+				}
+			}
 		}
 
 		return
