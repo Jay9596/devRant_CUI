@@ -19,8 +19,8 @@ A [devRant.io](https://www.devrant.io/) Console User Interface
     ` git clone https://github.com/Jay9596/devRant_CUI.git `  
     ` cd devRant_CUI `
   * Install Dependancies  
-    ` go import github.com/Jay9596/goRant `  
-    ` go import github.com/jroimartin/gocui `  
+    ` go get github.com/Jay9596/goRant `  
+    ` go get github.com/jroimartin/gocui `  
   * Run main.go  
     ` go run main.go `
   * Build and Run  
