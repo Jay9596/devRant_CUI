@@ -28,6 +28,7 @@ var (
 	rantOpen    = false
 	current     string
 	listEnd     = false
+	up          = 0
 )
 
 func layout(g *gocui.Gui) error {
@@ -209,6 +210,7 @@ func nextTab(g *gocui.Gui, v *gocui.View) error {
 
 //func to handle Inputs
 func enterCom(g *gocui.Gui, v *gocui.View) error {
+	up = 0
 	x, _ := v.Size()
 	_, lineY := v.Cursor()
 	v.SetCursor(x, lineY)
@@ -230,17 +232,20 @@ func quit(g *gocui.Gui, v *gocui.View) error {
 
 //func to handle upKey on Input frame
 func upKey(g *gocui.Gui, v *gocui.View) error {
-	_, lineY := v.Cursor()
-	if lineY == 0 {
-		return nil
+	if up == 0 {
+		_, lineY := v.Cursor()
+		if lineY == 0 {
+			return nil
+		}
+		preCom, err := v.Line(lineY - 1)
+		if err != nil {
+			return err
+		}
+		com := cleanComm(preCom)
+		fmt.Fprintf(v, "%s", com)
+		v.SetCursor(5+len(com), lineY)
+		up++
 	}
-	preCom, err := v.Line(lineY - 1)
-	if err != nil {
-		return err
-	}
-	com := cleanComm(preCom)
-	fmt.Fprintf(v, "%s", com)
-	v.SetCursor(5+len(com), lineY)
 	return nil
 }
 
@@ -299,6 +304,14 @@ func getRants(algo string, limit int, skip int) []goRant.Rant {
 //func to get single Rant
 func fetchRant(num int) {
 	output(true, "Fetching Rant")
+	if len(rants) <= 0 {
+		output(false, "Fetch rants before opening them")
+		return
+	}
+	if num >= len(rants) {
+		output(false, "Only 20 rants fetched at a time\nIndex out of range :p ")
+		return
+	}
 	r, comms, err := devRant.GetRant(rants[num].ID)
 	if err != nil {
 		v, _ := cui.View("output")
@@ -321,7 +334,7 @@ func printRant(r goRant.Rant, coms []goRant.Comment) {
 		tags += t + ", "
 	}
 	view.Clear()
-	fmt.Fprintf(view, "%s\nScore: %dn\nTags: %s\n\nComments:%d\n", rant, r.Score, tags, r.NumComments)
+	fmt.Fprintf(view, "%s\nScore: %d\n\nTags: %s\n\nComments:%d\n", rant, r.Score, tags, r.NumComments)
 	for _, cm := range coms {
 		body := fmt.Sprintf("%s     %d+\n%s\nScore: %d", cm.Username, cm.UserScore, cm.Body, cm.Score)
 		fmt.Fprintf(view, "%s\n\n", body)
@@ -462,12 +475,12 @@ func printHelp() {
 	output(true, "")
 	help := `Command: Output
 help: help info
-rants: Gets all rants
-next or :n : print next rants (at once 20 rants are fetched) 
-rant <number>: View the single rant
-cd.. or back : to go back to rants view
-profile <username>: Prints user info of given username
-search <term>: Prints result of search of given term
+rants: Gets rants  (at once 20 rants are fetched) 
+next or :n : Print next rants (after 20, new 'rants' are fetched automatically)
+rant {number}: View the single rant
+cd.. or back : Takes you back to rants view
+profile {username}: Prints user info of given username
+search {term}: Prints result of search of given term
 weekly : Prints weekly rants
 surprise or :!! : Prints a random rant
 collabs : Prints Collabs
@@ -516,18 +529,18 @@ func checkCommand(com string) {
 		parts := strings.Fields(cleanInp)
 		if len(parts) != 2 {
 			output(false, "Invalid usage of rant command\nRefer help")
-		} else {
-			if strings.Compare(parts[0], "rant") == 0 {
-				num, err := strconv.Atoi(parts[1])
-				if err != nil {
-					output(false, "Invalid rant number")
-					return
-				}
-				rantOpen = true
-				fetchRant(num)
-			}
+			return
 		}
-		return
+		if strings.Compare(parts[0], "rant") == 0 {
+			num, err := strconv.Atoi(parts[1])
+			if err != nil {
+				output(false, "Invalid rant number")
+				return
+			}
+			rantOpen = true
+			fetchRant(num)
+			return
+		}
 	}
 
 	//Profile Command
@@ -561,23 +574,27 @@ func checkCommand(com string) {
 
 	//stories Command
 	if strings.Compare(cleanInp, "stories") == 0 {
+		output(true, "")
 		fetchStories()
 		return
 	}
 
 	//weekly Command
 	if strings.Compare(cleanInp, "weekly") == 0 || strings.Compare(cleanInp, "weekly rants") == 0 {
+		output(true, "")
 		fetchWeeklyRants()
 		return
 	}
 
 	//surprise Command OR :!!
 	if strings.Compare(cleanInp, "surprise") == 0 || strings.Compare(cleanInp, ":!!") == 0 {
+		output(true, "")
 		fetchSurprise()
 		return
 	}
 
 	if strings.Compare(cleanInp, "collab") == 0 || strings.Compare(cleanInp, "collabs") == 0 {
+		output(true, "")
 		fetchCollabs()
 		return
 	}
@@ -610,6 +627,10 @@ func checkCommand(com string) {
 					output(false, "End of list\nFetch something else")
 				}
 			}
+		default:
+			{
+				output(false, "No rants fetched")
+			}
 		}
 
 		return
@@ -624,6 +645,7 @@ func checkCommand(com string) {
 	if strings.Compare(cleanInp, "cd ..") == 0 || strings.Compare(cleanInp, "cd..") == 0 || strings.Compare(cleanInp, "back") == 0 {
 		if rantOpen {
 			rantOpen = false
+			output(true, "")
 			printRants(rants, lastLim)
 		} else {
 			output(false, "Cannot go back")
@@ -695,7 +717,7 @@ func setLimit(g *gocui.Gui, v *gocui.View) error {
 		printLimit = 5
 	}
 	limit = num
-	if limit > 0 {
+	if limit > 0 && limit <= 20 {
 		printLimit = limit
 	} else {
 		printLimit = 5
