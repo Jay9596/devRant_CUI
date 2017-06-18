@@ -3,7 +3,7 @@ A [devRant.io](https://www.devrant.io/) Console User Interface
 
 ![Screenshot](https://raw.github.com/Jay9596/devRant_CUI/master/docs/images/devRant_CUI.png)
 
-# Tabel of Content
+# Table of Contents
 1. [Installation](#installation)  
 2. [Usage](#usage)  
 3. [Todo](#todo)  
@@ -14,7 +14,7 @@ A [devRant.io](https://www.devrant.io/) Console User Interface
  - [goRant](https://www.github.com/Jay9596/goRant)
  - [gocui](https://www.github.com/jroimartin/gocui)
  
- ### To complie and run  
+ ### To compile and run  
   * Clone this repo  
     ` git clone https://github.com/Jay9596/devRant_CUI.git `  
     ` cd devRant_CUI `
@@ -32,8 +32,8 @@ A [devRant.io](https://www.devrant.io/) Console User Interface
  ### Download
   [Download](https://github.com/Jay9596/devRant_CUI/releases/tag/v0.7)
  ### RUN
-  This can run on most terminals ,(not tried many) ,but has some limitations on Windows command prompt when resizing.
-  It can run on command prompt ,but for Windows use [Cmder](http://cmder.net/),[Hyper](https://github.com/zeit/hyper) ,etc.; for a better experience.  
+  This can run on most terminals(not tried many), but has some limitations on Windows Command Prompt when resizing.
+  It can run on Command Prompt, but for Windows use [Cmder](http://cmder.net/), [Hyper](https://github.com/zeit/hyper), etc.; for a better experience.  
 ## Usage
   #### UI 
   UI consists of 6 Views, 3 of which are editable.  
@@ -53,23 +53,23 @@ A [devRant.io](https://www.devrant.io/) Console User Interface
      It can take any int input  
      Default value is 5  
        
-     * To change ,just type and press Enter  
+     * To change, just type and press Enter  
   - Input  
      It is a dummy terminal with commands to run the CUI  
   ###### Note:   
-       It will only accept input after ":/ >" ,sometimes it can break. Please try to keep inputs after ":/ >" until i can fix this.  
+  > It will only accept input after ":/ >", sometimes it can break. Please try to keep inputs after ":/ >" until I can fix this.  
   
   ### Commands  
   - **help**  
-   This command displays the help ,very useful for first timers.  
+   This command displays the help, very useful for first timers.  
   - **rants**  
    This command fetched rants using the Sort and prints them.  
    It fetches 20 at a time, but prints only the Limit specified.  
   - **next** or **:n**  
-   This command is used to go to next ,i.e next page of list.  
-   This command prints the next rants ,but prints only the limited number.  
-   This command will auto fetch rants ,or specifies if end of section to fetch something else.  
-   Can be used after 'rants', 'stories' ,'weekly' ,'search' ,and 'collabs'  
+   This command is used to go to next, i.e next page of list.  
+   This command prints the next rants, but prints only the limited number.  
+   This command will auto fetch rants, or specifies if end of section to fetch something else.  
+   Can be used after 'rants', 'stories', 'weekly', 'search', and 'collabs'    
   - **rant {int}**  
    This command is used to open a rant.  
    It need a number, the number is shown before a rant, example ">>0".  
@@ -77,13 +77,13 @@ A [devRant.io](https://www.devrant.io/) Console User Interface
    This command is used to go beack to the rants view after opening a rant.  
   - **profile {username}**  
    This command will fetch the user info and print it.  
-   If there is an error, it will be shown in the output view above the input window  .
+   If there is an error, it will be shown in the output view above the input window.  
   - **search {term}**  
-   This command will search for the term on devrant.io, fetch, and print the search result,i.e the rants.  
+   This command will search for the term on devrant.io, fetch, and print the search result, i.e the rants.  
   - **weekly**  
-   This command will fetch the rants posted today, and tagged weekly topic,i.e 'wk-00'.  
+   This command will fetch the rants posted today, and tagged weekly topic, i.e 'wk-00'.  
   - **collabs**  
-   This commande will fetch the collanfs and print them.  
+   This command will fetch the collabs and print them.  
   - **stories**  
    This command will fetch and print stories.  
    For this, keep the limit small as stories are quiet long, and not many can fit.  
