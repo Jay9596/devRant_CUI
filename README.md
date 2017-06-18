@@ -98,6 +98,7 @@ A [devRant.io](https://www.devrant.io/) Console User Interface
   
 ## Todo
 - [ ] Refactor Code
+- [ ] Option to view all comments  
 - [ ] Improve the input terminal  
 - [ ] Add option to view content of user  
 
