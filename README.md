@@ -10,7 +10,7 @@ A [devRant.io](https://www.devrant.io/) Console User Interface
 
 ## Installation
  ### Dependancy
- - [Go](https://golang.org/)
+ - [Go](https://golang.org/) - version 1.5 or above required.
  - [goRant](https://www.github.com/Jay9596/goRant)
  - [gocui](https://www.github.com/jroimartin/gocui)
  
@@ -25,14 +25,14 @@ A [devRant.io](https://www.devrant.io/) Console User Interface
     ` go run main.go `
   * Build and Run  
     ` go build `  
-    ` ./devRant_cui `
+    ` ./devRant_CUI `
   * Install  
     ` go install github.com/Jay9596/devRant_CUI `
  
  ### Download
   [Download](https://github.com/Jay9596/devRant_CUI/releases/tag/v0.7)
  ### RUN
-  This can run on most terminals(not tried many), but has some limitations on Windows Command Prompt when resizing.
+  This can run on most terminals (not tried many), but has some limitations on Windows Command Prompt when resizing.
   It can run on Command Prompt, but for Windows use [Cmder](http://cmder.net/), [Hyper](https://github.com/zeit/hyper), etc.; for a better experience.  
 ## Usage
   #### UI 
