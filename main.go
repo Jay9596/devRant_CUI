@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"time"
+
 	"github.com/Jay9596/goRant"
 	"github.com/jroimartin/gocui"
 )
@@ -283,27 +285,29 @@ func output(clr bool, str string) {
 	fmt.Fprintf(v, "%s\n", str)
 }
 
-/*//redundant func, same as duput()
-func printThis(clr bool, str string) {
-	v, _ := cui.View("output")
-	if clr {
-		v.Clear()
-	}
-	fmt.Fprintf(v, "%s\n", str)
-}*/
-
 //func to get Rants
-func getRants(algo string, limit int, skip int) []goRant.Rant {
+func getRants(resp chan []goRant.Rant) {
 	rs, err := devRant.Rants(rantSetting.sort, rantSetting.limit, rantSetting.skip)
 	if err != nil {
-		output(false, err.Error())
+		output(false, "Error occoured!")
+		return
 	}
-	return rs
+	resp <- rs
+}
+
+//func to get Rant
+func getRant(resp chan goRant.Rant, com chan []goRant.Comment, ID int) {
+	r, comms, err := devRant.GetRant(ID)
+	if err != nil {
+		output(false, "Error occoured!")
+	}
+	resp <- r
+	com <- comms
 }
 
 //func to get single Rant
 func fetchRant(num int) {
-	output(true, "Fetching Rant")
+	output(true, "Fetching Rant....")
 	if len(rants) <= 0 {
 		output(false, "Fetch rants before opening them")
 		return
@@ -312,13 +316,24 @@ func fetchRant(num int) {
 		output(false, "Only 20 rants fetched at a time\nIndex out of range :p ")
 		return
 	}
-	r, comms, err := devRant.GetRant(rants[num].ID)
-	if err != nil {
-		v, _ := cui.View("output")
-		v.Clear()
-		fmt.Fprint(v, err.Error())
+	res := make(chan goRant.Rant)
+	com := make(chan []goRant.Comment)
+	go getRant(res, com, rants[num].ID)
+	select {
+	case comms := <-com:
+		output(false, "Done!!")
+		r := <-res
+		printRant(r, comms)
+	case <-time.After(time.Second * 5):
+		output(false, "Timeout...")
+	default:
+		r, comms, err := devRant.GetRant(rants[num].ID)
+		if err != nil {
+			output(false, "Error occoured!")
+		}
+		printRant(r, comms)
 	}
-	printRant(r, comms)
+
 }
 
 //func to print single Rant
@@ -345,21 +360,18 @@ func printRant(r goRant.Rant, coms []goRant.Comment) {
 func fetchRants() {
 	output(true, "Fetching rants....")
 	lastLim = 0
-	view := getMain()
-	view.Clear()
-	ch := make(chan bool)
 	rCh := make(chan []goRant.Rant)
-	go func(ch chan bool, r chan []goRant.Rant) {
-		rs := getRants(rantSetting.sort, rantSetting.limit, rantSetting.skip)
-		r <- rs
-		ch <- true
-	}(ch, rCh)
-	rs := <-rCh
-	if got := <-ch; got {
+	go getRants(rCh)
+	select {
+	case rs := <-rCh:
 		rants = rs
 		current = "rants"
 		printRants(rs, 0)
 		output(false, "Done!!")
+	case <-time.After(time.Second * 10):
+		output(false, "Timeout...")
+	default:
+		output(false, "Cannot fetch rants!!!")
 	}
 }
 
@@ -389,13 +401,26 @@ func printRants(rs []goRant.Rant, start int) {
 	}
 }
 
-func fetchProfile(name string) {
+func getProfile(resp chan goRant.User, name string) {
 	p, err := devRant.Profile(name)
 	if err != nil {
-		output(false, err.Error())
+		output(false, "Error occoured")
 		return
 	}
-	printProfile(p)
+	resp <- p
+}
+
+func fetchProfile(name string) {
+	output(false, "Fetching profile....")
+	user := make(chan goRant.User)
+	go getProfile(user, name)
+	select {
+	case p := <-user:
+		output(false, "Done!!")
+		printProfile(p)
+	case <-time.After(time.Second * 10):
+		output(false, "Timeout...")
+	}
 }
 
 //func to print profile
@@ -408,64 +433,135 @@ func printProfile(user goRant.User) {
 	fmt.Fprintf(v, "%s\n\nRants      : %d\n++'s       : %d\nComments   : %d\nFavourites : %d", info, counts.Rants, counts.Upvotes, counts.Comments, counts.Favourites)
 }
 
-//func to print search result
-func printRes(term string) {
-	lastLim = 0
+func getRes(resp chan []goRant.Rant, term string) {
 	rs, err := devRant.Search(term)
 	if err != nil {
-		output(false, err.Error())
+		output(false, "Error occoured!")
+		return
 	}
-	rants = rs
-	current = "search"
-	printRants(rs, 0)
+	resp <- rs
+}
+
+//func to print search result
+func printRes(term string) {
+	output(false, "Searching....")
+	lastLim = 0
+	listEnd = false
+	res := make(chan []goRant.Rant)
+	go getRes(res, term)
+	select {
+	case rs := <-res:
+		output(false, "Done!!")
+		rants = rs
+		current = "search"
+		printRants(rs, 0)
+	case <-time.After(time.Second * 10):
+		output(false, "Timeout...")
+	}
+
+}
+
+func getStories(resp chan []goRant.Rant) {
+	ss, err := devRant.Stories()
+	if err != nil {
+		output(false, "Error occoured!")
+		return
+	}
+	resp <- ss
 }
 
 func fetchStories() {
+	output(false, "Fetching Stories....")
 	lastLim = 0
 	listEnd = false
-	ss, err := devRant.Stories()
+	res := make(chan []goRant.Rant, 1)
+	go getStories(res)
+	select {
+	case ss := <-res:
+		output(false, "Done!!")
+		rants = ss
+		current = "stories"
+		printRants(ss, 0)
+	case <-time.After(time.Second * 10):
+		output(false, "Timeout...")
+	}
+}
+
+func getWeeklyRants(resp chan []goRant.Rant) {
+	wrs, err := devRant.WeeklyRant()
 	if err != nil {
-		output(false, err.Error())
+		output(false, "Error occoured!")
 		return
 	}
-	rants = ss
-	current = "stories"
-	printRants(ss, 0)
+	resp <- wrs
 }
 
 func fetchWeeklyRants() {
+	output(false, "Fetching weekly rants....")
 	lastLim = 0
 	listEnd = false
-	wrs, err := devRant.WeeklyRant()
+	res := make(chan []goRant.Rant, 1)
+	go getWeeklyRants(res)
+	select {
+	case wrs := <-res:
+		output(false, "Done!!")
+		rants = wrs
+		current = "weekly"
+		printRants(wrs, 0)
+	case <-time.After(time.Second * 10):
+		output(false, "Timeout...")
+	}
+}
+
+func getSurprise(resp chan goRant.Rant, com chan []goRant.Comment) {
+	r, coms, err := devRant.Surprise()
 	if err != nil {
-		output(false, err.Error())
+		output(false, "Error occoured!")
 		return
 	}
-	rants = wrs
-	current = "weekly"
-	printRants(wrs, 0)
+	resp <- r
+	com <- coms
 }
 
 func fetchSurprise() {
-	r, coms, err := devRant.Surprise()
+	output(false, "Fetching random rant....")
+	res := make(chan goRant.Rant)
+	com := make(chan []goRant.Comment)
+	go getSurprise(res, com)
+	select {
+	case coms := <-com:
+		output(false, "Done!!")
+		r := <-res
+		printRant(r, coms)
+	case <-time.After(time.Second * 10):
+		output(false, "Timeout...")
+	}
+}
+
+func getCollabs(resp chan []goRant.Rant) {
+	rs, err := devRant.Collabs()
 	if err != nil {
-		output(false, err.Error())
+		output(false, "Error occoured!")
 		return
 	}
-	printRant(r, coms)
+	resp <- rs
 }
 
 func fetchCollabs() {
 	lastLim = 0
 	listEnd = false
-	rs, err := devRant.Collabs()
-	if err != nil {
-		output(false, err.Error())
-		return
+	output(false, "Fetching collabs....")
+	res := make(chan []goRant.Rant)
+	go getCollabs(res)
+	select {
+	case rs := <-res:
+		output(false, "Done!!")
+		rants = rs
+		current = "collabs"
+		printRants(rs, 0)
+	case <-time.After(time.Second * 10):
+		output(false, "Timeout...")
 	}
-	rants = rs
-	current = "collabs"
-	printRants(rs, 0)
 }
 
 //duh! func to print help
@@ -611,8 +707,13 @@ func checkCommand(com string) {
 
 					lastLim = 0
 					rantSetting.skip += rantSetting.limit
-					rants = getRants(rantSetting.sort, rantSetting.limit+20, rantSetting.skip)
-					printRants(rants, lastLim)
+					res := make(chan []goRant.Rant)
+					go getRants(res)
+					select {
+					case rs := <-res:
+						rants = rs
+						printRants(rants, lastLim)
+					}
 				}
 				break
 			}
