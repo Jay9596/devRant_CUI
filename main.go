@@ -12,12 +12,14 @@ import (
 	"github.com/jroimartin/gocui"
 )
 
+// struct to store rant settings
 type setting struct {
 	sort  string
 	limit int
 	skip  int
 }
 
+// Global var declaration
 var (
 	devRant     *goRant.Client
 	cui         *gocui.Gui
@@ -33,8 +35,10 @@ var (
 	up          = 0
 )
 
+// This func has defination for all views
 func layout(g *gocui.Gui) error {
 	mX, mY := g.Size()
+	// Input area, on lower right side
 	inp, err := g.SetView("input", mX/2, mY/2-1, mX-1, mY-1)
 	if err != nil {
 		if err != gocui.ErrUnknownView {
@@ -50,6 +54,7 @@ func layout(g *gocui.Gui) error {
 		fmt.Fprintf(inp, " :/ >")
 		inp.SetCursor(5, 0)
 	}
+	// Main view, the left portion
 	m, mErr := g.SetView("main", 0, 0, mX/2-1, mY-1)
 	if mErr != nil {
 		if mErr != gocui.ErrUnknownView {
@@ -59,6 +64,8 @@ func layout(g *gocui.Gui) error {
 		m.Wrap = true
 		m.Editable = false
 	}
+
+	// The sort view
 	alg, aErr := g.SetView("sort", mX/2, mY/4-1, mX-1, mY/4+1)
 	if aErr != nil {
 		if aErr != gocui.ErrUnknownView {
@@ -70,6 +77,8 @@ func layout(g *gocui.Gui) error {
 		fmt.Fprintf(alg, "algo")
 		alg.SetCursor(0, 0)
 	}
+
+	// The limit view
 	lim, lErr := g.SetView("limit", mX/2, mY/4+2, mX-1, mY/4+4)
 	if lErr != nil {
 		if lErr != gocui.ErrUnknownView {
@@ -81,6 +90,8 @@ func layout(g *gocui.Gui) error {
 		fmt.Fprintf(lim, "5")
 		lim.SetCursor(0, 0)
 	}
+
+	// The output view
 	ds, dErr := cui.SetView("output", mX/2, mY/2-7, mX-1, mY/2-2)
 	if dErr != nil {
 		if dErr != gocui.ErrUnknownView {
@@ -91,6 +102,7 @@ func layout(g *gocui.Gui) error {
 		ds.Autoscroll = true
 	}
 
+	//Bannder with devRant written
 	logo, artErr := cui.SetView("banner", mX/2, 0, mX-2, mY/4-1)
 	if artErr != nil {
 		if artErr != gocui.ErrUnknownView {
@@ -112,6 +124,9 @@ func layout(g *gocui.Gui) error {
 	return nil
 }
 
+// Returs the main View
+// Separate func, because this view is used many times
+// To reduce writing boilerplate code
 func getMain() *gocui.View {
 	v, err := cui.View("main")
 	if err != nil {
@@ -120,12 +135,16 @@ func getMain() *gocui.View {
 	return v
 }
 
+// MAIN func ()
 func main() {
+	//Instace of goRant API Wrapper
 	devRant = goRant.New()
 	rantSetting.sort = "algo"
 	rantSetting.limit = 20
 	rantSetting.skip = 0
 	var err error
+
+	//Instace of gocui
 	cui, err = gocui.NewGui(gocui.OutputNormal)
 	if err != nil {
 		log.Panicln(err)
@@ -135,16 +154,20 @@ func main() {
 	cui.SelFgColor = gocui.ColorYellow
 	cui.Highlight = true
 
+	// Called layout func to draw UI
 	cui.SetManagerFunc(layout)
 
+	// Initialise all keybindings, except quit
 	if err := initKeyBinding(cui); err != nil {
 		log.Panic("Key binding err", err)
 	}
 
+	// Initialise QUIT keybinding
 	if err := cui.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
 		log.Panicln(err.Error())
 	}
 
+	// Main Loop for the CUI
 	if err := cui.MainLoop(); err != nil && err != gocui.ErrQuit {
 		log.Panicln("Error in Main loop ", err)
 	}
@@ -152,6 +175,7 @@ func main() {
 
 //Initialise Key bindings
 func initKeyBinding(g *gocui.Gui) error {
+	// Bindings for Input View
 	if err := cui.SetKeybinding("input", gocui.KeyEnter, gocui.ModNone, enterCom); err != nil {
 		return err
 	}
@@ -170,20 +194,24 @@ func initKeyBinding(g *gocui.Gui) error {
 	if err := cui.SetKeybinding("input", gocui.KeyArrowDown, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error { return nil }); err != nil {
 		return err
 	}
-
+	// Bindings for Sort View
 	if err := cui.SetKeybinding("sort", gocui.KeyEnter, gocui.ModNone, setSort); err != nil {
 		return err
 	}
+	// Bindings for Limit View
 	if err := cui.SetKeybinding("limit", gocui.KeyEnter, gocui.ModNone, setLimit); err != nil {
 		return err
 	}
+	// Bindings for All View
+	// Tab binding to cycle between views
 	if err := cui.SetKeybinding("", gocui.KeyTab, gocui.ModNone, nextTab); err != nil {
 		return err
 	}
 	return nil
 }
 
-//Set current View on top
+// Set current View on top
+// Used to switch active view
 func setCurrentViewOnTop(g *gocui.Gui, name string) (*gocui.View, error) {
 	if _, err := g.SetCurrentView(name); err != nil {
 		return nil, err
@@ -251,6 +279,7 @@ func upKey(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
+//func to handle leftKey on Input frame
 func leftKey(g *gocui.Gui, v *gocui.View) error {
 	x, y := v.Cursor()
 	if x > 5 {
@@ -259,6 +288,7 @@ func leftKey(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
+//func to handle rightKey on Input frame
 func rightKey(g *gocui.Gui, v *gocui.View) error {
 	x, y := v.Cursor()
 	str, _ := v.Line(y)
@@ -268,6 +298,7 @@ func rightKey(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
+//func to handle backspace on Input frame
 func backSp(g *gocui.Gui, v *gocui.View) error {
 	x, _ := v.Cursor()
 	if x > 5 {
@@ -284,6 +315,13 @@ func output(clr bool, str string) {
 	}
 	fmt.Fprintf(v, "%s\n", str)
 }
+
+// ######################################################################
+//	All func below this are used to handle the commands
+//  The 'fetchFOO' func's are the handlers
+//  The 'getFOO' func' are the func used as goroutines as background task
+//	The 'printFOO' prints the type of FOO specified
+// ######################################################################
 
 //func to get Rants
 func getRants(resp chan []goRant.Rant) {
@@ -305,7 +343,7 @@ func getRant(resp chan goRant.Rant, com chan []goRant.Comment, ID int) {
 	com <- comms
 }
 
-//func to get single Rant
+//func to fetch single Rant
 func fetchRant(num int) {
 	output(true, "Fetching Rant....")
 	if len(rants) <= 0 {
@@ -531,7 +569,7 @@ func fetchSurprise() {
 		output(false, "Done!!")
 		r := <-res
 		printRant(r, coms)
-	case <-time.After(time.Second * 5):
+	case <-time.After(time.Second * 10):
 		output(false, "Timeout...")
 	}
 }
@@ -609,6 +647,7 @@ func cleanComm(com string) string {
 	return stripCtlAndExtFromBytes(cleanInp)
 }
 
+// Getting the clean Input and switching to match commands
 func checkCommand(com string) {
 	cleanInp := cleanComm(com)
 
@@ -637,7 +676,7 @@ func checkCommand(com string) {
 		}
 	}
 
-	//Profile Command
+	//profile Command
 	if strings.Contains(cleanInp, "profile") {
 		parts := strings.Fields(cleanInp)
 		if len(parts) != 2 {
@@ -651,7 +690,7 @@ func checkCommand(com string) {
 		return
 	}
 
-	//Search Command
+	//search Command
 	if strings.Contains(cleanInp, "search") {
 		parts := strings.Fields(cleanInp)
 		if len(parts) != 2 {
@@ -687,6 +726,7 @@ func checkCommand(com string) {
 		return
 	}
 
+	//collab(s) command
 	if strings.Compare(cleanInp, "collab") == 0 || strings.Compare(cleanInp, "collabs") == 0 {
 		output(true, "")
 		fetchCollabs()
@@ -734,6 +774,7 @@ func checkCommand(com string) {
 
 		return
 	}
+
 	//Help Command
 	if strings.Compare(cleanInp, "help") == 0 {
 		printHelp()
@@ -751,6 +792,7 @@ func checkCommand(com string) {
 		}
 		return
 	}
+
 	//Clear Command
 	if strings.Compare(cleanInp, "clear") == 0 {
 		clearConsole()
@@ -831,7 +873,9 @@ func setLimit(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
-//Needed to clean the console Input
+// Needed to clean the console Input!
+// Due to gocui Line func, there is a trailing /x00 added to end of string
+// This function is called while cleaning the input to remove trailing /x00
 func stripCtlAndExtFromBytes(str string) string {
 	b := make([]byte, len(str))
 	var bl int
