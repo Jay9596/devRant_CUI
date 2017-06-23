@@ -334,9 +334,39 @@ func printRant(r goRant.Rant, coms []goRant.Comment) {
 		tags += t + ", "
 	}
 	view.Clear()
+	if err := commandView(cui); err != nil {
+		output(false, err.Error())
+		return
+	}
 	fmt.Fprintf(view, "%s\nScore: %d\n\nTags: %s\n\nComments:%d\n", rant, r.Score, tags, r.NumComments)
-	for _, cm := range coms {
-		body := fmt.Sprintf("%s     %d+\n%s\nScore: %d", cm.Username, cm.UserScore, cm.Body, cm.Score)
+	printComments(coms)
+}
+
+//Creates a new View for comments
+func commandView(g *gocui.Gui) error {
+	mX, mY := g.Size()
+	v, err := g.SetView("Comment", 0, mY/2-1, mX/2-1, mY-1)
+	if err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Wrap = true
+		v.Title = "Comment"
+		v.Frame = true
+		v.Autoscroll = false
+		v.Editable = false
+	}
+	return nil
+}
+
+func printComments(coms []goRant.Comment) {
+	view, err := cui.View("Comment")
+	if err != nil {
+		output(false, err.Error())
+		return
+	}
+	for i, cm := range coms {
+		body := fmt.Sprintf("%d>>\n%s     %d+\n%s\nScore: %d", i, cm.Username, cm.UserScore, cm.Body, cm.Score)
 		fmt.Fprintf(view, "%s\n\n", body)
 	}
 }
