@@ -368,10 +368,8 @@ func fetchRants() {
 		current = "rants"
 		printRants(rs, 0)
 		output(false, "Done!!")
-	case <-time.After(time.Second * 10):
+	case <-time.After(time.Second * 5):
 		output(false, "Timeout...")
-	default:
-		output(false, "Cannot fetch rants!!!")
 	}
 }
 
@@ -404,7 +402,7 @@ func printRants(rs []goRant.Rant, start int) {
 func getProfile(resp chan goRant.User, name string) {
 	p, err := devRant.Profile(name)
 	if err != nil {
-		output(false, "Error occoured")
+		output(false, "Error occoured!")
 		return
 	}
 	resp <- p
@@ -418,7 +416,7 @@ func fetchProfile(name string) {
 	case p := <-user:
 		output(false, "Done!!")
 		printProfile(p)
-	case <-time.After(time.Second * 10):
+	case <-time.After(time.Second * 5):
 		output(false, "Timeout...")
 	}
 }
@@ -455,7 +453,7 @@ func printRes(term string) {
 		rants = rs
 		current = "search"
 		printRants(rs, 0)
-	case <-time.After(time.Second * 10):
+	case <-time.After(time.Second * 5):
 		output(false, "Timeout...")
 	}
 
@@ -482,7 +480,7 @@ func fetchStories() {
 		rants = ss
 		current = "stories"
 		printRants(ss, 0)
-	case <-time.After(time.Second * 10):
+	case <-time.After(time.Second * 5):
 		output(false, "Timeout...")
 	}
 }
@@ -508,7 +506,7 @@ func fetchWeeklyRants() {
 		rants = wrs
 		current = "weekly"
 		printRants(wrs, 0)
-	case <-time.After(time.Second * 10):
+	case <-time.After(time.Second * 5):
 		output(false, "Timeout...")
 	}
 }
@@ -533,7 +531,7 @@ func fetchSurprise() {
 		output(false, "Done!!")
 		r := <-res
 		printRant(r, coms)
-	case <-time.After(time.Second * 10):
+	case <-time.After(time.Second * 5):
 		output(false, "Timeout...")
 	}
 }
@@ -559,7 +557,7 @@ func fetchCollabs() {
 		rants = rs
 		current = "collabs"
 		printRants(rs, 0)
-	case <-time.After(time.Second * 10):
+	case <-time.After(time.Second * 5):
 		output(false, "Timeout...")
 	}
 }
