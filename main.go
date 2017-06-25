@@ -6,16 +6,20 @@ import (
 	"strconv"
 	"strings"
 
+	"time"
+
 	"github.com/Jay9596/goRant"
 	"github.com/jroimartin/gocui"
 )
 
+// struct to store rant settings
 type setting struct {
 	sort  string
 	limit int
 	skip  int
 }
 
+// Global var declaration
 var (
 	devRant     *goRant.Client
 	cui         *gocui.Gui
@@ -31,8 +35,10 @@ var (
 	up          = 0
 )
 
+// This func has defination for all views
 func layout(g *gocui.Gui) error {
 	mX, mY := g.Size()
+	// Input area, on lower right side
 	inp, err := g.SetView("input", mX/2, mY/2-1, mX-1, mY-1)
 	if err != nil {
 		if err != gocui.ErrUnknownView {
@@ -48,6 +54,7 @@ func layout(g *gocui.Gui) error {
 		fmt.Fprintf(inp, " :/ >")
 		inp.SetCursor(5, 0)
 	}
+	// Main view, the left portion
 	m, mErr := g.SetView("main", 0, 0, mX/2-1, mY-1)
 	if mErr != nil {
 		if mErr != gocui.ErrUnknownView {
@@ -57,6 +64,8 @@ func layout(g *gocui.Gui) error {
 		m.Wrap = true
 		m.Editable = false
 	}
+
+	// The sort view
 	alg, aErr := g.SetView("sort", mX/2, mY/4-1, mX-1, mY/4+1)
 	if aErr != nil {
 		if aErr != gocui.ErrUnknownView {
@@ -68,6 +77,8 @@ func layout(g *gocui.Gui) error {
 		fmt.Fprintf(alg, "algo")
 		alg.SetCursor(0, 0)
 	}
+
+	// The limit view
 	lim, lErr := g.SetView("limit", mX/2, mY/4+2, mX-1, mY/4+4)
 	if lErr != nil {
 		if lErr != gocui.ErrUnknownView {
@@ -79,6 +90,8 @@ func layout(g *gocui.Gui) error {
 		fmt.Fprintf(lim, "5")
 		lim.SetCursor(0, 0)
 	}
+
+	// The output view
 	ds, dErr := cui.SetView("output", mX/2, mY/2-7, mX-1, mY/2-2)
 	if dErr != nil {
 		if dErr != gocui.ErrUnknownView {
@@ -89,6 +102,7 @@ func layout(g *gocui.Gui) error {
 		ds.Autoscroll = true
 	}
 
+	//Bannder with devRant written
 	logo, artErr := cui.SetView("banner", mX/2, 0, mX-2, mY/4-1)
 	if artErr != nil {
 		if artErr != gocui.ErrUnknownView {
@@ -110,6 +124,9 @@ func layout(g *gocui.Gui) error {
 	return nil
 }
 
+// Returs the main View
+// Separate func, because this view is used many times
+// To reduce writing boilerplate code
 func getMain() *gocui.View {
 	v, err := cui.View("main")
 	if err != nil {
@@ -118,12 +135,16 @@ func getMain() *gocui.View {
 	return v
 }
 
+// MAIN func ()
 func main() {
+	//Instace of goRant API Wrapper
 	devRant = goRant.New()
 	rantSetting.sort = "algo"
 	rantSetting.limit = 20
 	rantSetting.skip = 0
 	var err error
+
+	//Instace of gocui
 	cui, err = gocui.NewGui(gocui.OutputNormal)
 	if err != nil {
 		log.Panicln(err)
@@ -133,16 +154,20 @@ func main() {
 	cui.SelFgColor = gocui.ColorYellow
 	cui.Highlight = true
 
+	// Called layout func to draw UI
 	cui.SetManagerFunc(layout)
 
+	// Initialise all keybindings, except quit
 	if err := initKeyBinding(cui); err != nil {
 		log.Panic("Key binding err", err)
 	}
 
+	// Initialise QUIT keybinding
 	if err := cui.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
 		log.Panicln(err.Error())
 	}
 
+	// Main Loop for the CUI
 	if err := cui.MainLoop(); err != nil && err != gocui.ErrQuit {
 		log.Panicln("Error in Main loop ", err)
 	}
@@ -150,6 +175,7 @@ func main() {
 
 //Initialise Key bindings
 func initKeyBinding(g *gocui.Gui) error {
+	// Bindings for Input View
 	if err := cui.SetKeybinding("input", gocui.KeyEnter, gocui.ModNone, enterCom); err != nil {
 		return err
 	}
@@ -168,20 +194,24 @@ func initKeyBinding(g *gocui.Gui) error {
 	if err := cui.SetKeybinding("input", gocui.KeyArrowDown, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error { return nil }); err != nil {
 		return err
 	}
-
+	// Bindings for Sort View
 	if err := cui.SetKeybinding("sort", gocui.KeyEnter, gocui.ModNone, setSort); err != nil {
 		return err
 	}
+	// Bindings for Limit View
 	if err := cui.SetKeybinding("limit", gocui.KeyEnter, gocui.ModNone, setLimit); err != nil {
 		return err
 	}
+	// Bindings for All View
+	// Tab binding to cycle between views
 	if err := cui.SetKeybinding("", gocui.KeyTab, gocui.ModNone, nextTab); err != nil {
 		return err
 	}
 	return nil
 }
 
-//Set current View on top
+// Set current View on top
+// Used to switch active view
 func setCurrentViewOnTop(g *gocui.Gui, name string) (*gocui.View, error) {
 	if _, err := g.SetCurrentView(name); err != nil {
 		return nil, err
@@ -249,6 +279,7 @@ func upKey(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
+//func to handle leftKey on Input frame
 func leftKey(g *gocui.Gui, v *gocui.View) error {
 	x, y := v.Cursor()
 	if x > 5 {
@@ -257,6 +288,7 @@ func leftKey(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
+//func to handle rightKey on Input frame
 func rightKey(g *gocui.Gui, v *gocui.View) error {
 	x, y := v.Cursor()
 	str, _ := v.Line(y)
@@ -266,6 +298,7 @@ func rightKey(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
+//func to handle backspace on Input frame
 func backSp(g *gocui.Gui, v *gocui.View) error {
 	x, _ := v.Cursor()
 	if x > 5 {
@@ -283,27 +316,36 @@ func output(clr bool, str string) {
 	fmt.Fprintf(v, "%s\n", str)
 }
 
-/*//redundant func, same as duput()
-func printThis(clr bool, str string) {
-	v, _ := cui.View("output")
-	if clr {
-		v.Clear()
-	}
-	fmt.Fprintf(v, "%s\n", str)
-}*/
+// ######################################################################
+//	All func below this are used to handle the commands
+//  The 'fetchFOO' func's are the handlers
+//  The 'getFOO' func' are the func used as goroutines as background task
+//	The 'printFOO' prints the type of FOO specified
+// ######################################################################
 
 //func to get Rants
-func getRants(algo string, limit int, skip int) []goRant.Rant {
+func getRants(resp chan []goRant.Rant) {
 	rs, err := devRant.Rants(rantSetting.sort, rantSetting.limit, rantSetting.skip)
 	if err != nil {
-		output(false, err.Error())
+		output(false, "Error occoured!")
+		return
 	}
-	return rs
+	resp <- rs
 }
 
-//func to get single Rant
+//func to get Rant
+func getRant(resp chan goRant.Rant, com chan []goRant.Comment, ID int) {
+	r, comms, err := devRant.GetRant(ID)
+	if err != nil {
+		output(false, "Error occoured!")
+	}
+	resp <- r
+	com <- comms
+}
+
+//func to fetch single Rant
 func fetchRant(num int) {
-	output(true, "Fetching Rant")
+	output(true, "Fetching Rant....")
 	if len(rants) <= 0 {
 		output(false, "Fetch rants before opening them")
 		return
@@ -312,13 +354,24 @@ func fetchRant(num int) {
 		output(false, "Only 20 rants fetched at a time\nIndex out of range :p ")
 		return
 	}
-	r, comms, err := devRant.GetRant(rants[num].ID)
-	if err != nil {
-		v, _ := cui.View("output")
-		v.Clear()
-		fmt.Fprint(v, err.Error())
+	res := make(chan goRant.Rant)
+	com := make(chan []goRant.Comment)
+	go getRant(res, com, rants[num].ID)
+	select {
+	case comms := <-com:
+		output(false, "Done!!")
+		r := <-res
+		printRant(r, comms)
+	case <-time.After(time.Second * 5):
+		output(false, "Timeout...")
+	default:
+		r, comms, err := devRant.GetRant(rants[num].ID)
+		if err != nil {
+			output(false, "Error occoured!")
+		}
+		printRant(r, comms)
 	}
-	printRant(r, comms)
+
 }
 
 //func to print single Rant
@@ -375,21 +428,16 @@ func printComments(coms []goRant.Comment) {
 func fetchRants() {
 	output(true, "Fetching rants....")
 	lastLim = 0
-	view := getMain()
-	view.Clear()
-	ch := make(chan bool)
 	rCh := make(chan []goRant.Rant)
-	go func(ch chan bool, r chan []goRant.Rant) {
-		rs := getRants(rantSetting.sort, rantSetting.limit, rantSetting.skip)
-		r <- rs
-		ch <- true
-	}(ch, rCh)
-	rs := <-rCh
-	if got := <-ch; got {
+	go getRants(rCh)
+	select {
+	case rs := <-rCh:
 		rants = rs
 		current = "rants"
 		printRants(rs, 0)
 		output(false, "Done!!")
+	case <-time.After(time.Second * 5):
+		output(false, "Timeout...")
 	}
 }
 
@@ -419,13 +467,26 @@ func printRants(rs []goRant.Rant, start int) {
 	}
 }
 
-func fetchProfile(name string) {
+func getProfile(resp chan goRant.User, name string) {
 	p, err := devRant.Profile(name)
 	if err != nil {
-		output(false, err.Error())
+		output(false, "Error occoured!")
 		return
 	}
-	printProfile(p)
+	resp <- p
+}
+
+func fetchProfile(name string) {
+	output(false, "Fetching profile....")
+	user := make(chan goRant.User)
+	go getProfile(user, name)
+	select {
+	case p := <-user:
+		output(false, "Done!!")
+		printProfile(p)
+	case <-time.After(time.Second * 5):
+		output(false, "Timeout...")
+	}
 }
 
 //func to print profile
@@ -438,64 +499,135 @@ func printProfile(user goRant.User) {
 	fmt.Fprintf(v, "%s\n\nRants      : %d\n++'s       : %d\nComments   : %d\nFavourites : %d", info, counts.Rants, counts.Upvotes, counts.Comments, counts.Favourites)
 }
 
-//func to print search result
-func printRes(term string) {
-	lastLim = 0
+func getRes(resp chan []goRant.Rant, term string) {
 	rs, err := devRant.Search(term)
 	if err != nil {
-		output(false, err.Error())
+		output(false, "Error occoured!")
+		return
 	}
-	rants = rs
-	current = "search"
-	printRants(rs, 0)
+	resp <- rs
+}
+
+//func to print search result
+func printRes(term string) {
+	output(false, "Searching....")
+	lastLim = 0
+	listEnd = false
+	res := make(chan []goRant.Rant)
+	go getRes(res, term)
+	select {
+	case rs := <-res:
+		output(false, "Done!!")
+		rants = rs
+		current = "search"
+		printRants(rs, 0)
+	case <-time.After(time.Second * 5):
+		output(false, "Timeout...")
+	}
+
+}
+
+func getStories(resp chan []goRant.Rant) {
+	ss, err := devRant.Stories()
+	if err != nil {
+		output(false, "Error occoured!")
+		return
+	}
+	resp <- ss
 }
 
 func fetchStories() {
+	output(false, "Fetching Stories....")
 	lastLim = 0
 	listEnd = false
-	ss, err := devRant.Stories()
+	res := make(chan []goRant.Rant, 1)
+	go getStories(res)
+	select {
+	case ss := <-res:
+		output(false, "Done!!")
+		rants = ss
+		current = "stories"
+		printRants(ss, 0)
+	case <-time.After(time.Second * 5):
+		output(false, "Timeout...")
+	}
+}
+
+func getWeeklyRants(resp chan []goRant.Rant) {
+	wrs, err := devRant.WeeklyRant()
 	if err != nil {
-		output(false, err.Error())
+		output(false, "Error occoured!")
 		return
 	}
-	rants = ss
-	current = "stories"
-	printRants(ss, 0)
+	resp <- wrs
 }
 
 func fetchWeeklyRants() {
+	output(false, "Fetching weekly rants....")
 	lastLim = 0
 	listEnd = false
-	wrs, err := devRant.WeeklyRant()
+	res := make(chan []goRant.Rant, 1)
+	go getWeeklyRants(res)
+	select {
+	case wrs := <-res:
+		output(false, "Done!!")
+		rants = wrs
+		current = "weekly"
+		printRants(wrs, 0)
+	case <-time.After(time.Second * 5):
+		output(false, "Timeout...")
+	}
+}
+
+func getSurprise(resp chan goRant.Rant, com chan []goRant.Comment) {
+	r, coms, err := devRant.Surprise()
 	if err != nil {
-		output(false, err.Error())
+		output(false, "Error occoured!")
 		return
 	}
-	rants = wrs
-	current = "weekly"
-	printRants(wrs, 0)
+	resp <- r
+	com <- coms
 }
 
 func fetchSurprise() {
-	r, coms, err := devRant.Surprise()
+	output(false, "Fetching random rant....")
+	res := make(chan goRant.Rant)
+	com := make(chan []goRant.Comment)
+	go getSurprise(res, com)
+	select {
+	case coms := <-com:
+		output(false, "Done!!")
+		r := <-res
+		printRant(r, coms)
+	case <-time.After(time.Second * 10):
+		output(false, "Timeout...")
+	}
+}
+
+func getCollabs(resp chan []goRant.Rant) {
+	rs, err := devRant.Collabs()
 	if err != nil {
-		output(false, err.Error())
+		output(false, "Error occoured!")
 		return
 	}
-	printRant(r, coms)
+	resp <- rs
 }
 
 func fetchCollabs() {
 	lastLim = 0
 	listEnd = false
-	rs, err := devRant.Collabs()
-	if err != nil {
-		output(false, err.Error())
-		return
+	output(false, "Fetching collabs....")
+	res := make(chan []goRant.Rant)
+	go getCollabs(res)
+	select {
+	case rs := <-res:
+		output(false, "Done!!")
+		rants = rs
+		current = "collabs"
+		printRants(rs, 0)
+	case <-time.After(time.Second * 5):
+		output(false, "Timeout...")
 	}
-	rants = rs
-	current = "collabs"
-	printRants(rs, 0)
 }
 
 //duh! func to print help
@@ -545,6 +677,7 @@ func cleanComm(com string) string {
 	return stripCtlAndExtFromBytes(cleanInp)
 }
 
+// Getting the clean Input and switching to match commands
 func checkCommand(com string) {
 	cleanInp := cleanComm(com)
 
@@ -573,7 +706,7 @@ func checkCommand(com string) {
 		}
 	}
 
-	//Profile Command
+	//profile Command
 	if strings.Contains(cleanInp, "profile") {
 		parts := strings.Fields(cleanInp)
 		if len(parts) != 2 {
@@ -587,7 +720,7 @@ func checkCommand(com string) {
 		return
 	}
 
-	//Search Command
+	//search Command
 	if strings.Contains(cleanInp, "search") {
 		parts := strings.Fields(cleanInp)
 		if len(parts) != 2 {
@@ -623,6 +756,7 @@ func checkCommand(com string) {
 		return
 	}
 
+	//collab(s) command
 	if strings.Compare(cleanInp, "collab") == 0 || strings.Compare(cleanInp, "collabs") == 0 {
 		output(true, "")
 		fetchCollabs()
@@ -641,8 +775,13 @@ func checkCommand(com string) {
 
 					lastLim = 0
 					rantSetting.skip += rantSetting.limit
-					rants = getRants(rantSetting.sort, rantSetting.limit+20, rantSetting.skip)
-					printRants(rants, lastLim)
+					res := make(chan []goRant.Rant)
+					go getRants(res)
+					select {
+					case rs := <-res:
+						rants = rs
+						printRants(rants, lastLim)
+					}
 				}
 				break
 			}
@@ -665,6 +804,7 @@ func checkCommand(com string) {
 
 		return
 	}
+
 	//Help Command
 	if strings.Compare(cleanInp, "help") == 0 {
 		printHelp()
@@ -682,6 +822,7 @@ func checkCommand(com string) {
 		}
 		return
 	}
+
 	//Clear Command
 	if strings.Compare(cleanInp, "clear") == 0 {
 		clearConsole()
@@ -762,7 +903,9 @@ func setLimit(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
-//Needed to clean the console Input
+// Needed to clean the console Input!
+// Due to gocui Line func, there is a trailing /x00 added to end of string
+// This function is called while cleaning the input to remove trailing /x00
 func stripCtlAndExtFromBytes(str string) string {
 	b := make([]byte, len(str))
 	var bl int
