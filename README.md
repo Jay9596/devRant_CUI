@@ -73,6 +73,11 @@ A [devRant.io](https://www.devrant.io/) Console User Interface
   - **rant {int}**  
    This command is used to open a rant.  
    It need a number, the number is shown before a rant, example ">>0".  
+  - **comment** or **:c**  
+   This command will open a box to view comments of a rant.  
+   It displays 1 comment at a time.  
+   To cycle between comments use the down arrow (⬇) and up arrow (⬆) keys.
+   To close the comments box, press the right arrow (➡)
   - **back** or **cd ..**  
    This command is used to go beack to the rants view after opening a rant.  
   - **profile {username}**  
@@ -98,7 +103,7 @@ A [devRant.io](https://www.devrant.io/) Console User Interface
   
 ## Todo
 - [ ] Refactor Code
-- [ ] Option to view all comments  
+- [x] Option to view all comments  
 - [ ] Improve the input terminal  
 - [ ] Add option to view content of user  
 

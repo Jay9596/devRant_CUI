@@ -30,6 +30,8 @@ var (
 	rantSetting setting
 	rants       []goRant.Rant
 	rantOpen    = false
+	comments    []goRant.Comment
+	currCom     = 0
 	current     string
 	listEnd     = false
 	up          = 0
@@ -207,6 +209,19 @@ func initKeyBinding(g *gocui.Gui) error {
 	if err := cui.SetKeybinding("", gocui.KeyTab, gocui.ModNone, nextTab); err != nil {
 		return err
 	}
+
+	//Comment view binding
+	if err := cui.SetKeybinding("comment", gocui.KeyArrowRight, gocui.ModNone, comDone); err != nil {
+		return err
+	}
+
+	if err := cui.SetKeybinding("comment", gocui.KeyArrowUp, gocui.ModNone, comUp); err != nil {
+		return err
+	}
+
+	if err := cui.SetKeybinding("comment", gocui.KeyArrowDown, gocui.ModNone, comDown); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -307,6 +322,62 @@ func backSp(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
+//Creates a new View for comments
+func commentView(g *gocui.Gui) error {
+	mX, mY := g.Size()
+	v, err := g.SetView("comment", 0, mY/2-1, mX/2-1, mY-1)
+	if err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Wrap = true
+		v.Title = "Comment"
+		v.Frame = true
+		v.Autoscroll = false
+		v.Editable = false
+	}
+	if _, err := g.SetCurrentView("comment"); err != nil {
+		return err
+	}
+	printComment()
+	return nil
+}
+
+//handles Right key on comments View
+func comDone(g *gocui.Gui, v *gocui.View) error {
+	if err := cui.DeleteView("comment"); err != nil {
+		return err
+	}
+	if _, err := setCurrentViewOnTop(cui, "input"); err != nil {
+		return err
+	}
+	return nil
+}
+
+//handles Up key on comments View
+func comUp(g *gocui.Gui, v *gocui.View) error {
+	currCom--
+	if currCom >= 0 {
+		printComment()
+	} else {
+		currCom++
+		output(false, "Reached start of comments")
+	}
+	return nil
+}
+
+//handles down key on comments View
+func comDown(g *gocui.Gui, v *gocui.View) error {
+	currCom++
+	if currCom < len(comments) {
+		printComment()
+	} else {
+		currCom--
+		output(false, "Reached end of comments")
+	}
+	return nil
+}
+
 //func to print to output frame
 func output(clr bool, str string) {
 	v, _ := cui.View("output")
@@ -361,6 +432,7 @@ func fetchRant(num int) {
 	case comms := <-com:
 		output(false, "Done!!")
 		r := <-res
+		comments = comms
 		printRant(r, comms)
 	case <-time.After(time.Second * 5):
 		output(false, "Timeout...")
@@ -369,6 +441,7 @@ func fetchRant(num int) {
 		if err != nil {
 			output(false, "Error occoured!")
 		}
+		comments = comms
 		printRant(r, comms)
 	}
 
@@ -387,40 +460,28 @@ func printRant(r goRant.Rant, coms []goRant.Comment) {
 		tags += t + ", "
 	}
 	view.Clear()
-	if err := commandView(cui); err != nil {
-		output(false, err.Error())
-		return
-	}
 	fmt.Fprintf(view, "%s\nScore: %d\n\nTags: %s\n\nComments:%d\n", rant, r.Score, tags, r.NumComments)
-	printComments(coms)
 }
 
-//Creates a new View for comments
-func commandView(g *gocui.Gui) error {
-	mX, mY := g.Size()
-	v, err := g.SetView("Comment", 0, mY/2-1, mX/2-1, mY-1)
-	if err != nil {
-		if err != gocui.ErrUnknownView {
-			return err
-		}
-		v.Wrap = true
-		v.Title = "Comment"
-		v.Frame = true
-		v.Autoscroll = false
-		v.Editable = false
-	}
-	return nil
-}
-
-func printComments(coms []goRant.Comment) {
-	view, err := cui.View("Comment")
+func printComment() {
+	view, err := cui.View("comment")
 	if err != nil {
 		output(false, err.Error())
 		return
 	}
-	for i, cm := range coms {
-		body := fmt.Sprintf("%d>>\n%s     %d+\n%s\nScore: %d", i, cm.Username, cm.UserScore, cm.Body, cm.Score)
-		fmt.Fprintf(view, "%s\n\n", body)
+	view.Clear()
+	if len(comments) > 0 {
+		cm := comments[currCom]
+		body := fmt.Sprintf("%s     %d+\n\n%s\nScore: %d", cm.Username, cm.UserScore, cm.Body, cm.Score)
+		fmt.Fprintf(view, "%d] \n\n%s\n\n", currCom, body)
+		/*
+			for i, cm := range coms {
+				body := fmt.Sprintf("%d>>\n%s     %d+\n%s\nScore: %d", i, cm.Username, cm.UserScore, cm.Body, cm.Score)
+				fmt.Fprintf(view, "%s\n\n", body)
+			}
+		*/
+	} else {
+		fmt.Fprintf(view, "%s", "No comments to show!")
 	}
 }
 
@@ -443,6 +504,7 @@ func fetchRants() {
 
 //func to print []Rant
 func printRants(rs []goRant.Rant, start int) {
+	rantOpen = false
 	view := getMain()
 	view.Clear()
 	l := len(rs)
@@ -491,6 +553,7 @@ func fetchProfile(name string) {
 
 //func to print profile
 func printProfile(user goRant.User) {
+	rantOpen = false
 	v := getMain()
 	v.Clear()
 
@@ -598,6 +661,7 @@ func fetchSurprise() {
 	case coms := <-com:
 		output(false, "Done!!")
 		r := <-res
+		comments = coms
 		printRant(r, coms)
 	case <-time.After(time.Second * 10):
 		output(false, "Timeout...")
@@ -632,22 +696,24 @@ func fetchCollabs() {
 
 //duh! func to print help
 func printHelp() {
+	rantOpen = false
 	v := getMain()
 	v.Clear()
 	output(true, "")
 	help := `Command: Output
-help: help info
-rants: Gets rants  (at once 20 rants are fetched) 
+help : help info
+rants : Gets rants  (at once 20 rants are fetched) 
 next or :n : Print next rants (after 20, new 'rants' are fetched automatically)
-rant {number}: View the single rant
+rant {number} : View the single rant
+comment or :c : Open comment box to view comments of a rant 
 cd.. or back : Takes you back to rants view
-profile {username}: Prints user info of given username
+profile {username} : Prints user info of given username
 search {term}: Prints result of search of given term
 weekly : Prints weekly rants
 surprise or :!! : Prints a random rant
 collabs : Prints Collabs
 stories : Prints stories
-exit or ":q": Exit
+exit or :q : Exit
 Ctrl + C: Quit`
 	fmt.Fprintf(v, help)
 
@@ -704,6 +770,18 @@ func checkCommand(com string) {
 			fetchRant(num)
 			return
 		}
+	}
+
+	//comment Command
+	if strings.Compare(cleanInp, ":c") == 0 || strings.Compare(cleanInp, "comment") == 0 {
+		if rantOpen {
+			if err := commentView(cui); err != nil {
+				output(false, err.Error())
+			}
+		} else {
+			output(false, "Open rant to load comments")
+		}
+		return
 	}
 
 	//profile Command
