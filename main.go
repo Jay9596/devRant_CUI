@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 
@@ -733,7 +734,8 @@ func clearConsole() {
 
 func exit() {
 	getMain().Clear()
-	output(true, "Ctrl + C to Quit")
+	//output(true, "Ctrl + C to Quit")
+	os.Exit(0)
 }
 
 //Clean input by removing the leading ":/ >" and trailing extra chars
@@ -853,13 +855,14 @@ func checkCommand(com string) {
 
 					lastLim = 0
 					rantSetting.skip += rantSetting.limit
-					res := make(chan []goRant.Rant)
+					fetchRants()
+					/*res := make(chan []goRant.Rant)
 					go getRants(res)
 					select {
 					case rs := <-res:
 						rants = rs
 						printRants(rants, lastLim)
-					}
+					}*/
 				}
 				break
 			}
