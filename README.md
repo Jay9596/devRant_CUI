@@ -58,7 +58,7 @@ A [devRant.io](https://www.devrant.io/) Console User Interface
      It is a dummy terminal with commands to run the CUI  
   ###### Note:   
   > It will only accept input after ":/ >", sometimes it can break. Please try to keep inputs after ":/ >" until I can fix this.  
-  
+  _Always keep the cursor at the end of text input_  
   ### Commands  
   - **help**  
    This command displays the help, very useful for first timers.  
@@ -76,7 +76,7 @@ A [devRant.io](https://www.devrant.io/) Console User Interface
   - **comment** or **:c**  
    This command will open a box to view comments of a rant.  
    It displays 1 comment at a time.  
-   To cycle between comments use the down arrow (⬇) and up arrow (⬆) keys.
+   To cycle between comments use the down arrow (⬇) and up arrow (⬆) keys.  
    To close the comments box, press the right arrow (➡)
   - **:m**  
   This command can be used for long rants, it switchs the focus to main view, where you can scroll.  
@@ -109,7 +109,7 @@ A [devRant.io](https://www.devrant.io/) Console User Interface
 - [x] Option to view all comments  
 - [ ] Improve the input terminal  
 - [ ] Add option to view content of user  
-- [ ] Refactor Code (split between UI and logic)
+- [x] Refactor Code (split between UI and logic)  
 ## Contact
 Any and all criticism are appreciated.  
 
