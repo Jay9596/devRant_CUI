@@ -9,6 +9,7 @@ import (
 
 	"time"
 
+	"github.com/Jay9596/devRant_cui/UI"
 	"github.com/Jay9596/goRant"
 	"github.com/jroimartin/gocui"
 )
@@ -36,96 +37,8 @@ var (
 	current     string
 	listEnd     = false
 	up          = 0
+	opened      int
 )
-
-// This func has defination for all views
-func layout(g *gocui.Gui) error {
-	mX, mY := g.Size()
-	// Input area, on lower right side
-	inp, err := g.SetView("input", mX/2, mY/2-1, mX-1, mY-1)
-	if err != nil {
-		if err != gocui.ErrUnknownView {
-			return err
-		}
-		inp.Editable = true
-		inp.Overwrite = false
-		inp.Wrap = true
-		inp.Title = "Input"
-		if _, err := g.SetCurrentView("input"); err != nil {
-			return err
-		}
-		fmt.Fprintf(inp, " :/ >")
-		inp.SetCursor(5, 0)
-	}
-	// Main view, the left portion
-	m, mErr := g.SetView("main", 0, 0, mX/2-1, mY-1)
-	if mErr != nil {
-		if mErr != gocui.ErrUnknownView {
-			return mErr
-		}
-		m.Autoscroll = false
-		m.Wrap = true
-		m.Editable = false
-	}
-
-	// The sort view
-	alg, aErr := g.SetView("sort", mX/2, mY/4-1, mX-1, mY/4+1)
-	if aErr != nil {
-		if aErr != gocui.ErrUnknownView {
-			return aErr
-		}
-		alg.Title = "Sort"
-		alg.Editable = true
-		alg.Frame = true
-		fmt.Fprintf(alg, "algo")
-		alg.SetCursor(0, 0)
-	}
-
-	// The limit view
-	lim, lErr := g.SetView("limit", mX/2, mY/4+2, mX-1, mY/4+4)
-	if lErr != nil {
-		if lErr != gocui.ErrUnknownView {
-			return lErr
-		}
-		lim.Title = "Limit"
-		lim.Editable = true
-		lim.Frame = true
-		fmt.Fprintf(lim, "5")
-		lim.SetCursor(0, 0)
-	}
-
-	// The output view
-	ds, dErr := cui.SetView("output", mX/2, mY/2-7, mX-1, mY/2-2)
-	if dErr != nil {
-		if dErr != gocui.ErrUnknownView {
-			return dErr
-		}
-		ds.Editable = false
-		ds.Wrap = true
-		ds.Autoscroll = true
-	}
-
-	//Bannder with devRant written
-	logo, artErr := cui.SetView("banner", mX/2, 0, mX-2, mY/4-1)
-	if artErr != nil {
-		if artErr != gocui.ErrUnknownView {
-			return err
-		}
-		logo.Wrap = false
-		logo.Editable = false
-		logo.Frame = false
-
-		art := ` ########  ######## ##     ## ########     ###    ##    ## ######## 
- ##     ## ##       ##     ## ##     ##   ## ##   ###   ##    ##    
- ##     ## ##       ##     ## ##     ##  ##   ##  ####  ##    ##    
- ##     ## ######   ##     ## ########  ##     ## ## ## ##    ##    
- ##     ## ##        ##   ##  ##   ##   ######### ##  ####    ##    
- ##     ## ##         ## ##   ##    ##  ##     ## ##   ###    ##    
- ########  ########    ###    ##     ## ##     ## ##    ##    ##   `
-		fmt.Fprintf(logo, "%s", art)
-	}
-	return nil
-}
 
 // Returs the main View
 // Separate func, because this view is used many times
@@ -158,8 +71,8 @@ func main() {
 	cui.Highlight = true
 
 	// Called layout func to draw UI
-	cui.SetManagerFunc(layout)
-
+	cui.SetManagerFunc(UI.Layout)
+	cui.Cursor = true
 	// Initialise all keybindings, except quit
 	if err := initKeyBinding(cui); err != nil {
 		log.Panic("Key binding err", err)
@@ -223,6 +136,28 @@ func initKeyBinding(g *gocui.Gui) error {
 	if err := cui.SetKeybinding("comment", gocui.KeyArrowDown, gocui.ModNone, comDown); err != nil {
 		return err
 	}
+
+	//Mainview keybinding
+	if err := cui.SetKeybinding("main", gocui.KeyArrowDown, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			scrollView(v, 1)
+			return nil
+		}); err != nil {
+		return err
+	}
+
+	if err := cui.SetKeybinding("main", gocui.KeyArrowUp, gocui.ModNone,
+		func(g *gocui.Gui, v *gocui.View) error {
+			scrollView(v, -1)
+			return nil
+		}); err != nil {
+		return err
+	}
+
+	if err := cui.SetKeybinding("main", gocui.KeyArrowRight, gocui.ModNone, mainDone); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -323,27 +258,6 @@ func backSp(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
-//Creates a new View for comments
-func commentView(g *gocui.Gui) error {
-	mX, mY := g.Size()
-	v, err := g.SetView("comment", 0, mY/2-1, mX/2-1, mY-1)
-	if err != nil {
-		if err != gocui.ErrUnknownView {
-			return err
-		}
-		v.Wrap = true
-		v.Title = "Comment"
-		v.Frame = true
-		v.Autoscroll = false
-		v.Editable = false
-	}
-	if _, err := g.SetCurrentView("comment"); err != nil {
-		return err
-	}
-	printComment()
-	return nil
-}
-
 //handles Right key on comments View
 func comDone(g *gocui.Gui, v *gocui.View) error {
 	if err := cui.DeleteView("comment"); err != nil {
@@ -375,6 +289,27 @@ func comDown(g *gocui.Gui, v *gocui.View) error {
 	} else {
 		currCom--
 		output(false, "Reached end of comments")
+	}
+	return nil
+}
+
+//handles exit from main view
+func mainDone(g *gocui.Gui, v *gocui.View) error {
+	v.SetOrigin(0, 0)
+	if _, err := setCurrentViewOnTop(cui, "input"); err != nil {
+		return err
+	}
+	return nil
+}
+
+//handle cursor on main view
+func scrollView(v *gocui.View, dy int) error {
+	if v != nil {
+		v.Autoscroll = false
+		oX, oY := v.Origin()
+		if err := v.SetOrigin(oX, oY+dy); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -702,11 +637,13 @@ func printHelp() {
 	v.Clear()
 	output(true, "")
 	help := `Command: Output
+
 help : help info
 rants : Gets rants  (at once 20 rants are fetched) 
 next or :n : Print next rants (after 20, new 'rants' are fetched automatically)
 rant {number} : View the single rant
-comment or :c : Open comment box to view comments of a rant 
+comment or :c : Open comment box to view comments of a rant
+:m : To switch to main window to scroll for long rant
 cd.. or back : Takes you back to rants view
 profile {username} : Prints user info of given username
 search {term}: Prints result of search of given term
@@ -735,6 +672,7 @@ func clearConsole() {
 func exit() {
 	getMain().Clear()
 	//output(true, "Ctrl + C to Quit")
+	cui.Close()
 	os.Exit(0)
 }
 
@@ -769,6 +707,7 @@ func checkCommand(com string) {
 				return
 			}
 			rantOpen = true
+			opened = num
 			fetchRant(num)
 			return
 		}
@@ -777,9 +716,10 @@ func checkCommand(com string) {
 	//comment Command
 	if strings.Compare(cleanInp, ":c") == 0 || strings.Compare(cleanInp, "comment") == 0 {
 		if rantOpen {
-			if err := commentView(cui); err != nil {
+			if err := UI.CommentView(cui); err != nil {
 				output(false, err.Error())
 			}
+			printComment()
 		} else {
 			output(false, "Open rant to load comments")
 		}
@@ -856,13 +796,6 @@ func checkCommand(com string) {
 					lastLim = 0
 					rantSetting.skip += rantSetting.limit
 					fetchRants()
-					/*res := make(chan []goRant.Rant)
-					go getRants(res)
-					select {
-					case rs := <-res:
-						rants = rs
-						printRants(rants, lastLim)
-					}*/
 				}
 				break
 			}
@@ -900,6 +833,14 @@ func checkCommand(com string) {
 			printRants(rants, lastLim)
 		} else {
 			output(false, "Cannot go back")
+		}
+		return
+	}
+
+	//mainView command
+	if strings.Compare(cleanInp, ":m") == 0 {
+		if _, err := cui.SetCurrentView("main"); err != nil {
+			output(false, err.Error())
 		}
 		return
 	}
