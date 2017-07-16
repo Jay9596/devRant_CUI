@@ -27,19 +27,19 @@ var (
 	devRant     *goRant.Client
 	cui         *gocui.Gui
 	views       = []string{"input", "sort", "limit"}
-	active      = 0
+	active      = 0 //used for switching between views
 	printLimit  = 5
 	lastLim     = 0
 	rantSetting setting
-	rants       []goRant.Rant
+	rants       []goRant.Rant //stores fetched rants
 	rantOpen    = false
-	openRant    goRant.Rant
-	comments    []goRant.Comment
-	currCom     = 0
-	current     string
+	openRant    goRant.Rant      //stores current opened rant
+	comments    []goRant.Comment //stores comments of opened rant
+	currCom     = 0              //stores current comment number
+	current     string           //used for selecting current commande for :n
 	listEnd     = false
-	up          = 0
-	opened      int
+	up          = 0 //for up arrow on input view
+	//opened      int
 )
 
 // Returs the main View
@@ -268,6 +268,7 @@ func comDone(g *gocui.Gui, v *gocui.View) error {
 	if _, err := setCurrentViewOnTop(cui, "input"); err != nil {
 		return err
 	}
+	currCom = 0
 	return nil
 }
 
@@ -711,7 +712,7 @@ func checkCommand(com string) {
 				return
 			}
 			rantOpen = true
-			opened = num
+			//opened = num
 			fetchRant(num)
 			return
 		}
@@ -804,8 +805,11 @@ func checkCommand(com string) {
 				break
 			}
 		case "weekly":
+			fallthrough
 		case "search":
+			fallthrough
 		case "stories":
+			fallthrough
 		case "collabs":
 			{
 				if !listEnd {
@@ -871,6 +875,11 @@ func checkCommand(com string) {
 
 	//Clean Command
 	if strings.Compare(cleanInp, "clean") == 0 {
+		rants = nil
+		rantOpen = false
+		openRant = goRant.Rant{}
+		comments = nil
+		current = ""
 		getMain().Clear()
 		return
 	}
