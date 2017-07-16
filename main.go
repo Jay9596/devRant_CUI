@@ -12,6 +12,7 @@ import (
 	"github.com/Jay9596/devRant_cui/UI"
 	"github.com/Jay9596/goRant"
 	"github.com/jroimartin/gocui"
+	"github.com/pkg/browser"
 )
 
 // struct to store rant settings
@@ -32,6 +33,7 @@ var (
 	rantSetting setting
 	rants       []goRant.Rant
 	rantOpen    = false
+	openRant    goRant.Rant
 	comments    []goRant.Comment
 	currCom     = 0
 	current     string
@@ -377,6 +379,7 @@ func fetchRant(num int) {
 		if err != nil {
 			output(false, "Error occoured!")
 		}
+		openRant = r
 		comments = comms
 		printRant(r, comms)
 	}
@@ -644,6 +647,7 @@ next or :n : Print next rants (after 20, new 'rants' are fetched automatically)
 rant {number} : View the single rant
 comment or :c : Open comment box to view comments of a rant
 :m : To switch to main window to scroll for long rant
+image or img or :i : In rant to open the attached image in default browser 
 cd.. or back : Takes you back to rants view
 profile {username} : Prints user info of given username
 search {term}: Prints result of search of given term
@@ -833,6 +837,20 @@ func checkCommand(com string) {
 			printRants(rants, lastLim)
 		} else {
 			output(false, "Cannot go back")
+		}
+		return
+	}
+	//View images
+	if strings.Compare(cleanInp, "img") == 0 || strings.Compare(cleanInp, ":i") == 0 || strings.Compare(cleanInp, "image") == 0 {
+		if rantOpen {
+			if openRant.AttachedImage.URL != "" {
+				output(false, "Opening image in default browser")
+				browser.OpenURL(openRant.AttachedImage.URL)
+			} else {
+				output(false, "Rant contains no Image")
+			}
+		} else {
+			output(false, "Open rant first")
 		}
 		return
 	}
