@@ -80,10 +80,12 @@ A [devRant.io](https://www.devrant.io/) Console User Interface
    To close the comments box, press the right arrow (➡)
   - **:m**  
   This command can be used for long rants, it switchs the focus to main view, where you can scroll.  
-  In the main view you can scroll down or up using the down arrow (⬇) and up arrow (⬆) keys.  
+  In the main view you can scroll down or up using the down arrow (⬇) and up arrow (⬆) keys.   
   To switch to Input view, press the right arrow (➡)
+   - **image** or **img** or **:i**  
+  This command can be used to open the attached image in the rant, on the device default browser.  
   - **back** or **cd ..**  
-   This command is used to go beack to the rants view after opening a rant.  
+   This command is used to go back to the rants view after opening a rant.  
   - **profile {username}**  
    This command will fetch the user info and print it.  
    If there is an error, it will be shown in the output view above the input window.  
