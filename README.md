@@ -117,4 +117,3 @@ Any and all criticism are appreciated.
 
 If you try this and find any bug, suggestion, or feature.  
 Feel free to contact me.  
-For appreciation via ++ := username: BYTE  
